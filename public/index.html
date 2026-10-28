@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en" class="theme--auto">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>PGPBox Toolbox</title>
+
+      <script src="scripts/tailwind.min.js"></script>
+      <script defer src="scripts/openpgp.min.js"></script>
+      <script defer src="scripts/app.js"></script>
+
+      <link rel="stylesheet" href="style/app.css" />
+    </head>
+    <body class="min-h-screen">
+      <div class="mx-auto max-w-5xl px-4 md:px-6 py-6">
+          <header class="flex items-center justify-between mb-8">
+            <h1 class="text-[1.375rem] font-semibold tracking-tight">
+                PGPBox Toolbox
+            </h1>
+            <div class="flex items-center gap-3">
+                <button
+                  id="theme-toggle"
+                  class="btn"
+                  type="button"
+                  aria-label="Toggle color theme"
+                  aria-pressed="false"
+                >
+                  <span id="theme-icon" aria-hidden="true"> </span>
+                  <span class="hidden sm:inline text-[0.9rem]">Theme</span>
+                </button>
+            </div>
+          </header>
+
+          <div id="status" class="sr-status" role="status" aria-live="polite"></div>
+          <div
+            id="alert"
+            class="sr-status"
+            role="alert"
+            aria-live="assertive"
+          ></div>
+
+          <main class="space-y-5">
+            <!-- Generate Keys -->
+            <details class="card">
+                <summary id="gen-summary">
+                  <div class="summary-title">Generate PGP Key Pair</div>
+                  <div class="flex items-center gap-2">
+                      <span class="summary-desc"
+                        >Create a new public–private key pair for secure
+                        communication.</span
+                      >
+                      <svg
+                        class="chev"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 9l6 6 6-6"></path>
+                      </svg>
+                  </div>
+                </summary>
+                <div
+                  class="p-4 md:p-6 row row-2"
+                  role="region"
+                  aria-labelledby="gen-summary"
+                >
+                  <div>
+                      <label for="keyType"
+                        >Key Algorithm &amp; Strength
+                        <span class="text-red-600" aria-hidden="true">*</span></label
+                      >
+                      <select id="keyType" class="select">
+                        <option value="RSA-4096" selected>
+                            RSA-4096 (High Security)
+                        </option>
+                        <option value="RSA-2048">RSA-2048 (Standard)</option>
+                        <option value="ECC-256">ECC-p256 (Efficient)</option>
+                        <option value="ECC-384">ECC-p384 (High)</option>
+                        <option value="ECC-521">ECC-p521 (Ultra)</option>
+                      </select>
+                      <p class="mt-1 text-[0.8rem] text-slate-500">
+                        RSA is broadly compatible; ECC offers better performance.
+                      </p>
+                  </div>
+                  <div>
+                      <label for="keyPassword">Passphrase (optional)</label>
+                      <input
+                        id="keyPassword"
+                        type="password"
+                        class="input"
+                        autocomplete="new-password"
+                        placeholder="Strong passphrase"
+                      />
+                      <p class="mt-1 text-[0.8rem] text-slate-500">
+                        Protects your private key at rest.
+                      </p>
+                  </div>
+                  <div>
+                      <label for="keyComment">User Comment</label>
+                      <input
+                        id="keyComment"
+                        type="text"
+                        class="input"
+                        placeholder="e.g., Personal Key"
+                      />
+                  </div>
+                  <div>
+                      <label for="keyEmail">Associated Email</label>
+                      <input
+                        id="keyEmail"
+                        type="email"
+                        class="input"
+                        placeholder="user@example.com"
+                        autocomplete="email"
+                      />
+                  </div>
+                  <div class="md:col-span-2">
+                      <label for="keyExpiration">Expiration Date (optional)</label>
+                      <input id="keyExpiration" type="date" class="input" min="" />
+                      <p class="mt-1 text-[0.8rem] text-slate-500">
+                        Leave blank for no expiration.
+                      </p>
+                  </div>
+
+                  <div class="md:col-span-2">
+                      <button
+                        id="generateKeysButton"
+                        class="btn btn-primary w-full md:w-auto"
+                        type="button"
+                      >
+                        Generate key pair
+                      </button>
+                  </div>
+                </div>
+            </details>
+
+            <!-- Manage Keys -->
+            <details class="card">
+                <summary id="manage-summary">
+                  <div class="summary-title">Manage Stored Keys</div>
+                  <div class="flex items-center gap-2">
+                      <span class="summary-desc"
+                        >View, import, or remove locally stored PGP keys.</span
+                      >
+                      <svg
+                        class="chev"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 9l6 6 6-6"></path>
+                      </svg>
+                  </div>
+                </summary>
+                <div
+                  class="p-4 md:p-6 space-y-5"
+                  role="region"
+                  aria-labelledby="manage-summary"
+                >
+                  <div class="overflow-x-auto">
+                      <table class="card">
+                        <thead>
+                            <tr>
+                              <th>Fingerprint</th>
+                              <th>Email</th>
+                              <th>User ID</th>
+                              <th>Expiration</th>
+                              <th>Comment</th>
+                              <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="keysList"></tbody>
+                      </table>
+                  </div>
+
+                  <div>
+                      <label for="key">Import PGP Key (public or private)</label>
+                      <textarea
+                        id="key"
+                        class="textarea"
+                        placeholder="Paste armored PGP key here"
+                        aria-label="Import PGP Key"
+                      ></textarea>
+                      <p class="mt-1 text-[0.8rem] text-slate-500">
+                        Keys are stored in your browser’s local storage only.
+                      </p>
+                      <div class="flex flex-wrap gap-2 mt-3">
+                        <button
+                            id="storeKeysButton"
+                            class="btn btn-primary"
+                            type="button"
+                        >
+                            Import key
+                        </button>
+                        <button id="reloadKeysButton" class="btn" type="button">
+                            Refresh list
+                        </button>
+                      </div>
+                  </div>
+                </div>
+            </details>
+
+            <!-- Encrypt -->
+            <details class="card">
+                <summary id="enc-summary">
+                  <div class="summary-title">Encrypt Message</div>
+                  <div class="flex items-center gap-2">
+                      <span class="summary-desc"
+                        >Secure a message with a recipient’s public key.</span
+                      >
+                      <svg
+                        class="chev"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 9l6 6 6-6"></path>
+                      </svg>
+                  </div>
+                </summary>
+                <div
+                  class="p-4 md:p-6 space-y-4"
+                  role="region"
+                  aria-labelledby="enc-summary"
+                >
+                  <div>
+                      <label for="messageToEncrypt">Plaintext Message</label>
+                      <textarea
+                        id="messageToEncrypt"
+                        class="textarea"
+                        placeholder="Enter message to encrypt"
+                      ></textarea>
+                  </div>
+                  <div class="row row-2">
+                      <div>
+                        <label for="keySelectEncrypt">Recipient’s Public Key</label>
+                        <select
+                            id="keySelectEncrypt"
+                            data-type="public"
+                            class="select keySelector"
+                        >
+                            <option selected disabled value="">
+                              — Select Public Key —
+                            </option>
+                        </select>
+                      </div>
+                  </div>
+                  <div>
+                      <button
+                        id="encryptMessageButton"
+                        class="btn btn-primary"
+                        type="button"
+                      >
+                        Encrypt
+                      </button>
+                  </div>
+                  <div>
+                      <label for="encryptedMessage">Encrypted Message (armored)</label>
+                      <textarea
+                        id="encryptedMessage"
+                        class="textarea"
+                        readonly
+                        onclick="this.select()"
+                      ></textarea>
+                  </div>
+                </div>
+            </details>
+
+            <!-- Decrypt -->
+            <details class="card">
+                <summary id="dec-summary">
+                  <div class="summary-title">Decrypt Message</div>
+                  <div class="flex items-center gap-2">
+                      <span class="summary-desc"
+                        >Decrypt a message using your private key.</span
+                      >
+                      <svg
+                        class="chev"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 9l6 6 6-6"></path>
+                      </svg>
+                  </div>
+                </summary>
+                <div
+                  class="p-4 md:p-6 space-y-4"
+                  role="region"
+                  aria-labelledby="dec-summary"
+                >
+                  <div>
+                      <label for="messageToDecrypt">Encrypted Message (armored)</label>
+                      <textarea
+                        id="messageToDecrypt"
+                        class="textarea"
+                        placeholder="Paste encrypted message"
+                      ></textarea>
+                  </div>
+                  <div class="row row-2">
+                      <div>
+                        <label for="privateKeySelect">Your Private Key</label>
+                        <select
+                            id="privateKeySelect"
+                            data-type="private"
+                            class="select keySelector"
+                        >
+                            <option selected disabled value="">
+                              — Select Private Key —
+                            </option>
+                        </select>
+                      </div>
+                      <div>
+                        <label for="privateKeyPassword">Passphrase</label>
+                        <input
+                            id="privateKeyPassword"
+                            type="password"
+                            class="input"
+                            placeholder="Enter passphrase if required"
+                            autocomplete="current-password"
+                        />
+                      </div>
+                  </div>
+                  <div>
+                      <button
+                        id="decryptMessageButton"
+                        class="btn btn-primary"
+                        type="button"
+                      >
+                        Decrypt
+                      </button>
+                  </div>
+                  <div>
+                      <label for="decryptedMessage">Decrypted Plaintext</label>
+                      <textarea
+                        id="decryptedMessage"
+                        class="textarea"
+                        readonly
+                        onclick="this.select()"
+                      ></textarea>
+                  </div>
+                </div>
+            </details>
+
+            <!-- Sign -->
+            <details class="card">
+                <summary id="sign-summary">
+                  <div class="summary-title">Sign Message</div>
+                  <div class="flex items-center gap-2">
+                      <span class="summary-desc"
+                        >Sign a message to prove its authenticity.</span
+                      >
+                      <svg
+                        class="chev"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 9l6 6 6-6"></path>
+                      </svg>
+                  </div>
+                </summary>
+                <div
+                  class="p-4 md:p-6 space-y-4"
+                  role="region"
+                  aria-labelledby="sign-summary"
+                >
+                  <div>
+                      <label for="messageToSign">Plaintext Message</label>
+                      <textarea
+                        id="messageToSign"
+                        class="textarea"
+                        placeholder="Enter message to sign"
+                      ></textarea>
+                  </div>
+                  <div class="row row-2">
+                      <div>
+                        <label for="signPrivateKeySelect">Your Private Key</label>
+                        <select
+                            id="signPrivateKeySelect"
+                            data-type="private"
+                            class="select keySelector"
+                        >
+                            <option selected disabled value="">
+                              — Select Private Key —
+                            </option>
+                        </select>
+                      </div>
+                      <div>
+                        <label for="signPrivateKeyPassword">Passphrase</label>
+                        <input
+                            id="signPrivateKeyPassword"
+                            type="password"
+                            class="input"
+                            placeholder="Enter passphrase if required"
+                        />
+                      </div>
+                  </div>
+                  <div>
+                      <button
+                        id="signMessageButton"
+                        class="btn btn-primary"
+                        type="button"
+                      >
+                        Sign
+                      </button>
+                  </div>
+                  <div>
+                      <label for="signedMessage">Signed Message (armored)</label>
+                      <textarea
+                        id="signedMessage"
+                        class="textarea"
+                        readonly
+                        onclick="this.select()"
+                      ></textarea>
+                  </div>
+                </div>
+            </details>
+
+            <!-- Verify -->
+            <details class="card">
+                <summary id="verify-summary">
+                  <div class="summary-title">Verify Signed Message</div>
+                  <div class="flex items-center gap-2">
+                      <span class="summary-desc"
+                        >Verify the authenticity of a signed message.</span
+                      >
+                      <svg
+                        class="chev"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 9l6 6 6-6"></path>
+                      </svg>
+                  </div>
+                </summary>
+                <div
+                  class="p-4 md:p-6 space-y-4"
+                  role="region"
+                  aria-labelledby="verify-summary"
+                >
+                  <div>
+                      <label for="messageToVerify">Signed Message (armored)</label>
+                      <textarea
+                        id="messageToVerify"
+                        class="textarea"
+                        placeholder="Paste signed message"
+                      ></textarea>
+                  </div>
+                  <div class="row row-2">
+                      <div>
+                        <label for="verifyPublicKeySelect">Sender’s Public Key</label>
+                        <select
+                            id="verifyPublicKeySelect"
+                            data-type="public"
+                            class="select keySelector"
+                        >
+                            <option selected disabled value="">
+                              — Select Public Key —
+                            </option>
+                        </select>
+                      </div>
+                  </div>
+                  <div>
+                      <button
+                        id="verifyMessageButton"
+                        class="btn btn-primary"
+                        type="button"
+                      >
+                        Verify
+                      </button>
+                  </div>
+                </div>
+            </details>
+          </main>
+
+          <footer class="text-center mt-10">
+            <p class="text-[0.95rem]">
+                Star this project on
+                <a
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  href="https://github.com/joshuavanderpoll/PGPBox-js"
+                  >GitHub</a
+                >
+            </p>
+            <p class="mt text-[0.8rem] text-slate-500">
+                PGPBox uses OpenPGP.js for cryptographic operations. Keys are stored
+                in your browser’s local storage.
+            </p>
+          </footer>
+      </div>
+    </body>
+</html>
